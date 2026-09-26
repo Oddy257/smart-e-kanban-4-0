@@ -2,7 +2,10 @@ import streamlit as st
 import sqlite3
 import pandas as pd
 from datetime import datetime
+import qrcode
+from io import BytesIO
 
+APP_URL = "https://smart-e-kanban-4-0-wwp9tuvfkur2ayl2fcslaf.streamlit.app"
 # ============================================================
 # CONFIGURATION
 # ============================================================
@@ -281,6 +284,21 @@ def reinitialiser_demo():
 
     conn.commit()
 # ============================================================
+# GENERATION DES QR CODES
+# ============================================================
+
+def generer_qr(url):
+    qr = qrcode.make(url)
+
+    buffer = BytesIO()
+
+    qr.save(
+        buffer,
+        format="PNG"
+    )
+
+    return buffer.getvalue()
+# ============================================================
 # MENU
 # ============================================================
 
@@ -290,7 +308,8 @@ menu = st.sidebar.radio(
         "📊 Dashboard",
         "📦 Mouvement de stock",
         "🔔 Réapprovisionnement",
-        "📜 Historique"
+        "📜 Historique",
+        "📱 QR Codes"
     ]
 )
 st.sidebar.divider()
@@ -429,3 +448,50 @@ elif menu == "📜 Historique":
             historique,
             use_container_width=True
         )
+# ============================================================
+# QR CODES
+# ============================================================
+
+elif menu == "📱 QR Codes":
+
+    st.subheader("📱 QR Codes des composants")
+
+    st.write(
+        "Chaque QR Code permet d'identifier un composant "
+        "et d'accéder directement à sa fiche dans le Smart e-Kanban."
+    )
+
+    composants_qr = pd.read_sql_query(
+        "SELECT code, nom FROM composants",
+        conn
+    )
+
+    for _, row in composants_qr.iterrows():
+
+        code = row["code"]
+        nom = row["nom"]
+
+        url = f"{APP_URL}/?code={code}"
+
+        qr_image = generer_qr(url)
+
+        st.markdown(f"### {code} - {nom}")
+
+        st.image(
+            qr_image,
+            width=180
+        )
+
+        st.caption(
+            f"Scan → identification automatique de {code} - {nom}"
+        )
+
+        st.download_button(
+            label=f"⬇️ Télécharger QR {code}",
+            data=qr_image,
+            file_name=f"QR_{code}.png",
+            mime="image/png",
+            key=f"qr_{code}"
+        )
+
+        st.divider()
