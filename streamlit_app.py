@@ -242,7 +242,7 @@ def receptionner(code, quantite):
         stock_avant,
         stock_apres
     )
-
+verifier_reapprovisionnement(code)
     return True, f"Réception enregistrée. Nouveau stock : {stock_apres}"
 # ============================================================
 # REINITIALISATION DE LA DEMONSTRATION
