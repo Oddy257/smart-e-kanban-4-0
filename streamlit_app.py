@@ -241,7 +241,45 @@ def receptionner(code, quantite):
     )
 
     return True, f"Réception enregistrée. Nouveau stock : {stock_apres}"
+# ============================================================
+# REINITIALISATION DE LA DEMONSTRATION
+# ============================================================
 
+def reinitialiser_demo():
+
+    donnees_initiales = [
+        ("C01", "Roulement", 150, 20, 3, 20),
+        ("C02", "Rotor", 35, 8, 4, 10),
+        ("C03", "Stator", 90, 10, 3, 15),
+        ("C04", "Carter", 60, 12, 2, 12),
+        ("C05", "Capteur", 25, 5, 4, 8),
+        ("C06", "Connecteur", 100, 15, 2, 20),
+        ("C07", "Visserie", 400, 80, 2, 100),
+        ("C08", "Câble", 70, 10, 3, 15)
+    ]
+
+    cursor.execute("DELETE FROM mouvements")
+    cursor.execute("DELETE FROM reapprovisionnements")
+    cursor.execute("DELETE FROM composants")
+
+    for code, nom, stock, conso, delai, securite in donnees_initiales:
+
+        point_commande = conso * delai + securite
+
+        cursor.execute("""
+        INSERT INTO composants
+        VALUES (?, ?, ?, ?, ?, ?, ?)
+        """, (
+            code,
+            nom,
+            stock,
+            conso,
+            delai,
+            securite,
+            point_commande
+        ))
+
+    conn.commit()
 # ============================================================
 # MENU
 # ============================================================
@@ -255,7 +293,12 @@ menu = st.sidebar.radio(
         "📜 Historique"
     ]
 )
+st.sidebar.divider()
 
+if st.sidebar.button("🔄 Réinitialiser la démonstration"):
+    reinitialiser_demo()
+    st.sidebar.success("Données réinitialisées.")
+    st.rerun()
 # ============================================================
 # DASHBOARD
 # ============================================================
