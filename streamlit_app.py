@@ -357,7 +357,132 @@ if menu == "📊 Dashboard":
     st.bar_chart(
         stocks.set_index("Composant")["Stock"]
     )
+if menu == "📊 Dashboard":
 
+    stocks = pd.read_sql_query("""
+        SELECT
+            code AS Code,
+            nom AS Composant,
+            stock AS Stock,
+            consommation_jour AS "Conso./jour",
+            delai_jours AS "Délai",
+            stock_securite AS "Stock sécurité",
+            point_commande AS "Point de commande",
+
+            CASE
+                WHEN stock <= stock_securite THEN 'URGENT'
+                WHEN stock <= point_commande THEN 'A REAPPROVISIONNER'
+                ELSE 'NORMAL'
+            END AS Etat,
+
+            CASE
+                WHEN stock <= stock_securite THEN 'Traiter en urgence'
+                WHEN stock <= point_commande THEN 'Lancer le réapprovisionnement'
+                ELSE 'Aucune action'
+            END AS Action
+
+        FROM composants
+    """, conn)
+
+    # --------------------------------------------------------
+    # INDICATEURS
+    # --------------------------------------------------------
+
+    c1, c2, c3, c4 = st.columns(4)
+
+    c1.metric(
+        "Références",
+        len(stocks)
+    )
+
+    c2.metric(
+        "À réapprovisionner",
+        (stocks["Etat"] == "A REAPPROVISIONNER").sum()
+    )
+
+    c3.metric(
+        "Urgents",
+        (stocks["Etat"] == "URGENT").sum()
+    )
+
+    c4.metric(
+        "Stock total",
+        int(stocks["Stock"].sum())
+    )
+
+    # --------------------------------------------------------
+    # REGLE DE DECISION
+    # --------------------------------------------------------
+
+    st.info("""
+    📌 Règle de décision
+
+    Point de commande : PC = Consommation/jour × Délai + Stock de sécurité
+
+    🟢 NORMAL : Stock > PC
+
+    🟠 À RÉAPPROVISIONNER : Stock sécurité < Stock ≤ PC
+
+    🔴 URGENT : Stock ≤ Stock sécurité
+    """)
+
+    # --------------------------------------------------------
+    # TABLEAU DES STOCKS
+    # --------------------------------------------------------
+
+    st.subheader("État des stocks")
+
+    st.dataframe(
+        stocks,
+        use_container_width=True,
+        hide_index=True
+    )
+
+    # --------------------------------------------------------
+    # MESSAGE POUR LE RESPONSABLE LOGISTIQUE
+    # --------------------------------------------------------
+
+    a_reappro = stocks[
+        stocks["Etat"] == "A REAPPROVISIONNER"
+    ]
+
+    urgents = stocks[
+        stocks["Etat"] == "URGENT"
+    ]
+
+    if len(urgents) > 0:
+        noms_urgents = ", ".join(
+            urgents["Code"] + " - " + urgents["Composant"]
+        )
+
+        st.error(
+            f"🔴 {len(urgents)} référence(s) urgente(s) : {noms_urgents}"
+        )
+
+    if len(a_reappro) > 0:
+        noms_reappro = ", ".join(
+            a_reappro["Code"] + " - " + a_reappro["Composant"]
+        )
+
+        st.warning(
+            f"🟠 {len(a_reappro)} référence(s) à réapprovisionner : "
+            f"{noms_reappro}"
+        )
+
+    if len(urgents) == 0 and len(a_reappro) == 0:
+        st.success(
+            "🟢 Tous les stocks sont actuellement dans un état normal."
+        )
+
+    # --------------------------------------------------------
+    # GRAPHIQUE
+    # --------------------------------------------------------
+
+    st.subheader("Niveau de stock")
+
+    st.bar_chart(
+        stocks.set_index("Composant")["Stock"]
+    )
 # ============================================================
 # MOUVEMENTS
 # ============================================================
